@@ -18,7 +18,7 @@ library(MPsychoR)
 ```
 
 ```{r}
-
+data("Rogers")
 ```
 
 
@@ -87,15 +87,16 @@ zorderdf <- cor(symp)
 qgraph(zorderdf, layout = "spring", groups = list(Depression = 1:4, Healthy_elements = 7:8, Unhealthy_elements = 5:6), color = c("darkgrey", "lightblue", "darkred"), nodeNames = colnames(zorderdf))
 ```
 ```{r}
-
+write.csv(df_clean, file = "df_gb_clean.csv")
 ```
 
 ```{r}
-
+data("Rogers")
+setdiff(names)
 ```
 
 ```{r}
-
+names(Rogers)
 ```
 
 ```{r}

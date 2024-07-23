@@ -1,0 +1,193 @@
+---
+title: "Flex learning"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    #orientation: rows
+    vertical_layout: fill
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(igraph)
+library(igraphdata)
+library(qgraph)
+library(bootnet)
+library(corpcor)
+library(usethis)
+library(MPsychoR)
+library(shiny)
+library(rlang)
+library(DT)
+
+```
+
+```{r}
+df <- read.csv("df_clean.csv")
+
+data("iris")
+
+df <- df[2:16]
+
+df2 <- read.csv("df_clean_more_features.csv", header = T)[2:18]
+
+#head(df2)
+
+
+```
+
+
+Net Analysis with symptoms
+==========================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+#symp <- df[8:15]
+#symp <- chosen_cntry[,8:15]
+#zorderdf <- cor(symp)
+#qgraph(zorderdf, layout = "spring", groups = list(Depression = 1:4, Healthy_elements = 7:8, Unhealthy_elements = 5:6), color = c("darkgrey", "lightblue", "darkred"), nodeNames = colnames(zorderdf))
+
+renderPlot({req(input$countries)
+  ndf <- chosen_cntry()[8:15]
+  #ndf <- df[8:15] %>% filter(cntry == input$countries)
+  zorderdf <- cor(ndf)
+  qgraph(zorderdf, layout = "spring", groups = list(Depression = 1:4, Healthy_elements = 7:8, Unhealthy_elements = 5:6), color = c("darkgrey", "lightblue", "darkred"), nodeNames = colnames(zorderdf))
+  })
+
+```
+
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+
+```{r}
+selectInput('countries', 'Select the country', unique(df$cntry))
+
+chosen_cntry <- reactive({req(input$countries)
+  df %>% filter(cntry == input$countries)})
+
+#ct_by_cntry <- reactiveValues({req(input$countries)
+#  df %>% filter(cntry == input$countries) %>%
+#  summarise(total = n())})
+
+renderTable({chosen_cntry()})
+```
+
+### Total in the sample by country: `r reactive(input$countries)` 
+
+```{r}
+
+renderValueBox({
+  count_cntry <- df %>% filter(cntry == input$countries) %>%
+  summarise(total = n())
+  valueBox(value = count_cntry, color = 'green', icon = 'fa-users')})
+
+#valueBox(value = count_cntry, color = 'green', icon = 'fa-users')
+
+#output$countBox<- renderValueBox({val <- ct_by_cntry()$total
+#valueBox(value = val, color = 'green', icon = 'fa-users')})
+
+#rlang::(ct_by_cntry())
+#reactiveValues(ct_by_cntry())
+
+```
+
+Net Analysis with all vars
+============
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+### Network Analysis
+```{r}
+renderPlot({req(input$countries2)
+  ndf2 <- chosen_cntry2()[, c(4:length(df2))]
+  #ndf <- df[8:15] %>% filter(cntry == input$countries)
+  zorderdf2 <- cor(ndf2)
+  qgr <- qgraph(zorderdf2, layout = "spring", groups = list(Sociodem = 1:2, Health_issues = 3:4, Depression = 5:10, Healthy_elements = 13:14, Unhealthy_elements = 11:12), color = c("grey", "red", "darkblue", "darkgreen", "darkred"), nodeNames = colnames(zorderdf2))
+  })
+
+#colnames(df2)[4:length(df2)]
+```
+
+
+Column {data-width=50}
+-----------------------------------------------------------------------
+
+### Selection
+```{r}
+selectInput('countries2', 'Select the country', unique(df2$cntry))
+
+chosen_cntry2 <- reactive({req(input$countries2)
+  df2 %>% filter(cntry == input$countries2)})
+```
+
+### Total
+```{r}
+#renderTable({chosen_cntry2()})
+renderValueBox({
+  count_cntry2 <- df2 %>% filter(cntry == input$countries2) %>%
+  summarise(total = n())
+  valueBox(value = count_cntry2, color = 'green', icon = 'fa-users')})
+```
+
+
+
+Boxplot
+========
+
+Col {data-width = 50}
+-----------------------
+
+### Options 
+```{r}
+op_df2 <- df2[4:17]
+checkboxGroupInput("variable", 'variables to show:', as.vector(names(op_df2)), selected = names(op_df2)[1])
+op <- reactive({df2[, c(input$variable)]})
+
+#colnames(df2[3:17])
+```
+
+Col
+--------------------------------------
+
+### Table
+```{r}
+renderTable({ req(input$variable)
+  df2[1:5, input$variable]})
+```
+
+
+
+### Graph
+
+```{r}
+renderPlot({boxplot(op())})
+
+```
+
+General Table
+========
+
+Col {data-width = 500}
+-----------------------
+
+### Options 
+```{r}
+datatable(df, caption = "Mental Health, daily habits and sociodemographics",rownames = T ,filter = 'top', options = list(pageLength = 10))
+```
+
+
+```

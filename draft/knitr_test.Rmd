@@ -1,0 +1,113 @@
+---
+title: "Draft para aprender Rmd"
+author: "Pietro Olivetti"
+date: "2024-07-22"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE, 
+	fig.height = 8, 
+	fig.width = 10
+)
+```
+
+# Paquetes
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(lorem)
+library(xtable)
+#library(stargaze)
+#install.packages('stargaze')
+
+```
+
+# Datos
+
+```{r}
+datos <- read_csv("../df_gb.csv")
+datos
+```
+
+*Cursiva* y **Negrita**
+
+Enlazar a otra sección [Paquetes]
+
+# Tablas
+
+```{r}
+datos %>%
+  group_by(hlthhmp) %>%
+  summarise(Media = mean(agea), DT = sd(agea), .groups = 'drop') %>%
+  as.data.frame() %>% kable() %>% kable_styling("bordered")
+```
+
+1.  primero
+2.  segundo
+
+-   primero
+-   segundo
+
+Figuras ![Fuente: Leyenda deltexto](https://northwesttribalart.com/wp-content/uploads/2023/06/salmon-upstream-by-yukie-adams-10.jpg)
+
+
+# Chunks
+
+## Echo = FALSE
+```{r echo=FALSE, eval=TRUE}
+agea.real <- datos %>% 
+  select(agea, fltdpr) %>%
+  filter(agea < 100)
+
+ggplot(agea.real, aes(agea)) + geom_histogram()
+
+#ggplot(agea.real, aes(agea, fltdpr)) + geom_col()
+```
+
+```{r results='markup'}
+agea.real <- datos %>% 
+  select(agea, fltdpr) %>%
+  filter(agea < 100)
+
+ggplot(agea.real, aes(agea)) + geom_histogram()
+
+#ggplot(agea.real, aes(agea, fltdpr)) + geom_col()
+```
+
+
+# Fórmulas con $\LaTeX$
+
+
+# Output insertado en texto
+
+El número **`r num <- sample(1:5, 1); num`** es aleatoriamente escogido. Este va a ser el número de párrafos abajo:
+
+`r lorem::ipsum(num)`
+
+
+
+# Compilación con parámetros
+```{r}
+for (c in unique(datos$agea)[1:5]){
+  rmarkdown::render('../age.Rmd', output_file = paste0('age', c, sep='_'), params = list(c_count = c))
+}
+
+```
+
+```{r}
+if(!require(tinytex)){install.packages('tinytex')
+  library(tinytex)}
+```
+
+
+

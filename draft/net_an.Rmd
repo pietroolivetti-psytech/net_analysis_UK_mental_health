@@ -1,0 +1,283 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+# Packages and data loading
+
+
+```{r}
+#install.packages("MPsychoR")
+library("MPsychoR")
+library("qgraph")
+library(dplyr)
+```
+
+
+```{r}
+data(Rogers)
+
+dim(Rogers)
+
+head(Rogers)
+```
+
+# Force-directed plotting with Fruchterman–Reingold
+
+Most studies on networks in psychopathology have used the Fruchterman-Reingold (FR) algorithm to create graphs. This algorithm, similar to methods by Kamada and Kawai, is like setting up a system of balls connected by stretchy strings. The strings pull connected balls closer, while the other balls push them apart, resulting in a neat graph where nodes are well-spaced and edges are evenly distributed.
+
+Force-directed algorithms aim to produce visually pleasing graphs by minimizing edge crossings and spacing nodes evenly. The goal is not to place the nodes in specific meaningful locations, but to make the network easy to view, showing connections and clusters clearly.
+
+It's important to avoid interpreting the spatial positions of nodes in these graphs, as the placement is not meant to convey specific meanings. Misinterpreting the layout is a common mistake, as it's natural to want to find meaning in the arrangement.
+
+The FR algorithm is the default in the qgraph R package, making it straightforward to use. We will illustrate this with a zero-order correlation network of adults with OCD and depression.
+
+```{r}
+zeroorder <- cor(Rogers)
+
+qgraph(zeroorder, layout = "spring", groups = list(Depression = 1:16, OCD = 17:26), color = c("lightblue", "darkblue"))
+
+```
+```{r}
+df <- read.csv("df_gb.csv")
+df <- df[2:15]
+head(df)
+```
+
+```{r}
+
+
+df_t <- df %>%
+  mutate(fltsd = ifelse(fltsd > 4, NA, fltsd))  %>%
+  mutate(fltdpr = ifelse(fltdpr > 4, NA, fltdpr))  %>%
+  mutate(cldgng = ifelse(cldgng > 4, NA, cldgng))  %>%
+  mutate(slprl = ifelse(slprl > 4, NA, slprl))  %>%
+  mutate(cgtsmok = ifelse(cgtsmok > 7, NA, cgtsmok))  %>%
+  mutate(alcfreq = ifelse(alcfreq > 7, NA, alcfreq))  %>%
+  mutate(dosprt = ifelse(dosprt > 7, NA, dosprt))  %>%
+  mutate(ctrlife = ifelse(ctrlife > 10, NA, ctrlife)) %>%
+  mutate(cgtsmok = recode(cgtsmok, `7` = 1, `6` = 2, `5` = 3, `4`= 4, `1` = 7, `2` = 6, `3` = 5)) %>%
+  mutate(alcfreq = recode(alcfreq, `7` = 1, `6` = 2, `5` = 3, `4`= 4, `1` = 7, `2` = 6, `3` = 5))
+  
+
+```
+
+```{r}
+
+df_t <- df_t %>%
+  rename(
+    control_over_life = ctrlife,
+    #everything_effort = flteeff,
+    restless_sleep = slprl,
+    gender = gndr,
+    unable_med_consultation_12_months = medtrun,
+    felt_depressed = fltdpr,
+    could_not_get_going = cldgng,
+    felt_sad = fltsd,
+    household_income = hinctnta,
+    frequency_of_alcohol_consumption = alcfreq,
+    hampered_daily_activities = hlthhmp,
+    #country_of_birth = cntbrthd,
+    age = agea,
+    frequency_doing_sports = dosprt,
+    frequency_of_cigarette_smoking = cgtsmok
+  )
+
+summary(df_t)
+```
+
+
+```{r}
+df_clean <- na.omit(df_t)
+
+symp <- df_clean[7:14]
+
+zorderdf <- cor(symp)
+
+qgraph(zorderdf, layout = "spring", groups = list(Depression = 1:4, Healthy_elements = 7:8, Unhealthy_elements = 5:6), color = c("darkgrey", "lightblue", "darkred"), nodeNames = colnames(zorderdf))
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+## Filtrar, seleccionar y limpiar
+```{r}
+df_gb <- df %>% 
+  filter(cntry == 'GB') %>%
+  select('idno', 'agea', 'gndr', 'hinctnta', 'hlthhmp', 'medtrun', 'fltsd', 'cldgng', 'fltdpr', 'slprl', 'cgtsmok', 'alcfreq', 'dosprt', 'ctrlife')
+```
+
+```{r}
+df_gb <- df_gb %>%
+  mutate(agea = ifelse(agea == 999, mean(agea[agea != 999], na.rm = TRUE), agea)) %>%
+  mutate(gndr = ifelse(gndr == 1, "Male", "Female"))
+```
+
+```{r}
+bins <- seq(15, 95, by=10)
+lab <- paste(seq(15, 85, by = 10), seq(24, 94, by = 10), sep = "-")
+df_gb$age_interval <- cut(df_gb$agea, breaks = bins, labels = lab)
+```
+
+
+```{r}
+summary(df_gb)
+```
+
+
+
+```{r}
+as.data.frame(table(df_gb$gndr))
+```
+
+```{r}
+str(df_gb)
+```
+
+```{r}
+test <- igraph::make_graph(edges = c(1,2,2,3,3,1), n=3, directed = F)
+plot(test)
+
+vertex_attr(test)
+
+# view and count vertices
+V(test)
+gsize(test)
+
+# view and count edges
+E(test)
+gorder(test)
+```
+
+```{r}
+g <- make_graph(edges = c(1, 2, 1, 5), n = 10, directed = FALSE)
+
+library(usethis)
+```
+# making a dummy dataset
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# Generate random symptom data
+data <- data.frame(
+  symptom1 = rnorm(100),
+  symptom2 = rnorm(100),
+  symptom3 = rnorm(100),
+  symptom4 = rnorm(100)
+)
+
+# Generate random gender data
+gender <- sample(c("M", "F"), 100, replace = TRUE)
+
+# Define age intervals
+age_intervals <- c("15-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-84", "85-95")
+
+# Generate random age interval data
+age_interval <- sample(age_intervals, 100, replace = TRUE)
+
+# Add gender and age_interval to the data frame
+data$gender <- gender
+data$age_interval <- age_interval
+
+# View the first few rows of the updated data frame
+head(data)
+
+```
+
+```{r}
+
+symp_data <- data[, 1:4]
+
+cor_matrix <- cor(symp_data)
+partial_cor <- cor2pcor(cor_matrix)
+
+qgraph(partial_cor, labels= colnames(symp_data))
+```
+
+```{r}
+
+# Function to compute partial correlation matrix
+compute_partial_cor <- function(sub_data) {
+  cor_matrix <- cor(sub_data)
+  partial_cor_matrix <- cor2pcor(cor_matrix)
+  return(partial_cor_matrix)
+}
+
+# Create a list to store partial correlation matrices for different groups
+partial_cor_matrices <- list()
+
+# Stratify by gender
+for(g in unique(data$gender)) {
+  sub_data <- data %>% filter(gender == g) %>% select(starts_with("symptom"))
+  partial_cor_matrices[[g]] <- compute_partial_cor(sub_data)
+}
+
+# Stratify by age_interval
+for(a in unique(data$age_interval)) {
+  sub_data <- data %>% filter(age_interval == a) %>% select(starts_with("symptom"))
+  partial_cor_matrices[[a]] <- compute_partial_cor(sub_data)
+}
+
+
+```
+
+```{r}
+# Function to visualize networks
+plot_network <- function(partial_cor_matrix, title) {
+  qgraph(partial_cor_matrix, layout = "spring", labels = colnames(data[, 1:4]), main = title)
+}
+
+# Plot networks for different genders
+par(mfrow = c(1, 2))  # Set up the plotting area to have 2 plots side by side
+plot_network(partial_cor_matrices[["M"]], "Male")
+plot_network(partial_cor_matrices[["F"]], "Female")
+
+# Plot networks for different age intervals (as an example, first two age intervals)
+par(mfrow = c(1, 2))  # Set up the plotting area to have 2 plots side by side
+plot_network(partial_cor_matrices[["15-24"]], "Age 15-24")
+plot_network(partial_cor_matrices[["25-34"]], "Age 25-34")
+```

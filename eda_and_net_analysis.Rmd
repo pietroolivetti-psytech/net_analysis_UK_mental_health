@@ -1,0 +1,263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Reference article: https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2018.01742/full
+
+```{r}
+library(dplyr)
+library(igraph)
+library(igraphdata)
+library(qgraph)
+library(bootnet)
+library(corpcor)
+library(usethis)
+library(MPsychoR)
+library(openxlsx)
+library(ggplot2)
+library(tidyr)
+library(png)
+library(gridExtra)
+
+
+```
+
+```{r}
+df <- read.xlsx('MetrikaMind_data_for_network_analyses.xlsx')
+head(df)
+```
+### Which rows should be deleted?
+```{r}
+
+length(df$Gender)
+
+#Amount of NAs 
+sum(is.na(df))
+
+#subsetting them
+showna <- df[!complete.cases(df) , ]
+
+
+```
+
+
+```{r}
+# Counting missing data by ID
+
+id.nas <- c(6, 255, 399, 552, 568, 672, 676, 831, 871)
+c.nas <- c()
+
+for (m in 1:dim(showna)[1]){
+  c.nas <- append(c.nas, sum(is.na(showna[m , ])))
+  print(toString(showna[m , ][0]))}
+
+missing_by_rows <- data.frame(ID = id.nas, NAs_number = c.nas)
+
+missing_by_rows
+```
+
+```{r}
+
+
+```
+
+### Subsetting PHQ items
+
+### The domain here is 1 to 4 but the study of reference has it as 0 to 3
+```{r}
+phq <- df[ , 54:62]
+
+# no NA in phq
+sum(is.na(phq))
+
+phq
+```
+### How can I explore the distribution of these items? Should I sum it all and create a new colum? Should I create a long dataframe and calculate their distributions by facets? Discrepancy related to the domain (range of values): reference article is 0 to 3 and in the dataset it is 1 to 4.  
+```{r}
+
+long <- gather(phq, key = "Item", value = "Valor", phq_01:phq_09)
+
+ggplot(long, aes(x=Valor)) + geom_histogram(binwidth = 1, fill="blue", color = "black") +
+  facet_wrap(~ Item, scales = "free") +
+  labs(title = "Distribución de los ítems", x = "Valor", y = "Frequencia")
+
+```
+
+```{r}
+
+phq$phq_sum_1_4 <- phq$phq_01 + phq$phq_02 + phq$phq_03 + phq$phq_04 + phq$phq_05 + phq$phq_06 + phq$phq_07 + phq$phq_08 + phq$phq_09
+
+phq$phq_sum_0_3 <- (phq$phq_01 - 1) + (phq$phq_02 - 1) + (phq$phq_03 - 1) + (phq$phq_04 - 1) + (phq$phq_05 - 1) + (phq$phq_06 - 1) + (phq$phq_07 - 1) + (phq$phq_08 - 1) + (phq$phq_09 - 1)
+
+head(phq)
+
+```
+
+```{r}
+summary(phq$phq_sum_1_4)
+
+brk_1_4 <- seq(min(phq$phq_sum_1_4),max(phq$phq_sum_1_4), by=1)
+
+ggplot(phq, aes(x= phq_sum_1_4)) + geom_histogram(binwidth = 1, fill="darkblue", color="grey") + theme_minimal() + 
+  scale_x_continuous(breaks = brk_1_4) + labs(title = "Distribución del puntaje de PHQ 1 a 4") + geom_vline(xintercept = c(14,19,24,29), color="red", linetype="dashed") + annotate("text", x= c(14,19,24,29), y= 200,  label = c("ligera", "moderada", "moderadamente \nsevera", "severa"), size=3, color="red")
+```
+
+```{r}
+summary(phq$phq_sum_0_3)
+
+brk_0_3 <- seq(min(phq$phq_sum_0_3),max(phq$phq_sum_0_3), by=1)
+
+ggplot(phq, aes(x= phq_sum_0_3)) + geom_histogram(binwidth = 1, fill="darkblue", color="grey") + theme_minimal() + 
+  scale_x_continuous(breaks = brk_0_3) + labs(title = "Distribución del puntaje de PHQ 0 a 3") + geom_vline(xintercept = c(5,10,15,20), color="red", linetype="dashed") + annotate("text", x= c(5,10,15,20), y= 200,  label = c("ligera", "moderada", "moderadamente \nsevera", "severa"), size=3, color="red")
+```
+
+```{r}
+ggplot(phq, aes(phq_sum_1_4)) + geom_boxplot(color="darkblue",fill="lightblue",  outlier.colour = "red", notch = TRUE, show.legend = TRUE) + 
+  scale_x_continuous(breaks = brk_1_4) + labs(title = "Boxplot de PHQ 1 a 4", x="Sumas")
+
+#count(phq$phq_sum_1_4[phq$phq_sum_1_4 ])
+```
+### 32 outliers
+
+```{r}
+IQR <- quantile(phq$phq_sum_1_4, 0.75) - quantile(phq$phq_sum_1_4, 0.25)
+outsup <- (IQR * 1.5) + quantile(phq$phq_sum_1_4, 0.75)
+outinf <- (IQR * 1.5) - quantile(phq$phq_sum_1_4, 0.25)
+
+phq$phq_sum_1_4[phq$phq_sum_1_4 > outsup | phq$phq_sum_1_4 < outinf]
+
+
+table(phq$phq_sum_1_4[phq$phq_sum_1_4 %in% boxplot.stats(phq$phq_sum_1_4)$out] )
+```
+```{r}
+outliers::outlier(phq$phq_01)
+
+ggplot(long, aes(x=Valor)) + geom_boxplot(fill="blue", color = "black") +
+  facet_wrap(~ Item, scales = "free") +
+  labs(title = "Distribución de los ítems", x = "Valor", y = "Frequencia")
+```
+
+# Force-directed plotting with Fruchterman–Reingold
+
+Most studies on networks in psychopathology have used the Fruchterman-Reingold (FR) algorithm to create graphs. This algorithm, similar to methods by Kamada and Kawai, is like setting up a system of balls connected by stretchy strings. The strings pull connected balls closer, while the other balls push them apart, resulting in a neat graph where nodes are well-spaced and edges are evenly distributed.
+
+Force-directed algorithms aim to produce visually pleasing graphs by minimizing edge crossings and spacing nodes evenly. The goal is not to place the nodes in specific meaningful locations, but to make the network easy to view, showing connections and clusters clearly.
+
+It's important to avoid interpreting the spatial positions of nodes in these graphs, as the placement is not meant to convey specific meanings. Misinterpreting the layout is a common mistake, as it's natural to want to find meaning in the arrangement.
+
+The FR algorithm is the default in the qgraph R package, making it straightforward to use. We will illustrate this with a zero-order correlation network of adults with OCD and depression.
+
+
+### Empezamos por crear una correlación de orden cero y a partir de ahí hacer los edges
+```{r}
+zeroorder_phq <- cor(phq[1:10])
+
+qgraph(zeroorder_phq, layout = "spring")
+
+```
+### Dividing by gender 
+
+```{r}
+sum(is.na(df$Gender))
+
+phq$gender <- df$Gender
+
+phq_gndr <- phq %>%
+  select(gender, phq_01, phq_02,phq_03,phq_04,phq_05,phq_06,phq_07,phq_08,phq_09, phq_sum)
+
+phq_gndr_M <- phq_gndr %>%
+  filter(gender == 1)
+
+phq_gndr_F <- phq_gndr %>%
+  filter(gender == 2)
+
+zeroorder_phq_M <- cor(phq_gndr_M[2:length(phq_gndr_M)])
+zeroorder_phq_F <- cor(phq_gndr_F[2:length(phq_gndr_F)])
+
+```
+
+```{r}
+
+qg_phq_M <- qgraph(zeroorder_phq_M, layout = "spring", title= "Hombres")
+
+qg_phq_F <- qgraph(zeroorder_phq_F, layout = "spring", title ="Mujeres")
+
+```
+# Checking almost all variables
+
+```{r}
+df_gen <- df %>%
+  mutate(Age = as.numeric(Age)) %>%
+  select(!c(Gender, Civil_Status, Employment_Status, Province, ResponseId))
+
+gen_zeroorder <- cor(df_gen, use = "complete.obs")
+
+colnames(df_gen)
+```
+
+
+
+
+```{r}
+
+groups <- list(Sociodem = 1:3, Pers_BFI2 = 4:18, Pers_hexaco = 19:28, Depr_cesd = 29:48, Depr_phq = 49:58, Depr_promis = 59:85, Depr_qids = 86:95, Depr_Ans_dass = 96:115, Depr_Ans_hads = 116:133, Ans_gad = 134:140, Ans_tmas = 141:190, Ans_sas = 191:205, Pers_rbfi2 = 206:209, Pers_rhexaco = 210:217, Ans_rtmas = 218:229)
+
+color_nodes <- c("salmon", "darkgreen", "lightgreen", "deepskyblue", "dodgerblue", "royalblue", "navy", "darkorange", "orange", "lightcoral", "firebrick", "darkred",  "darkgreen", "lightgreen" ,"lightcoral")
+
+
+qgraph(gen_zeroorder, layout="spring", labels = colnames(gen_zeroorder), groups = groups , color = color_nodes, theme="TeamFortress", height = 180, width = 140)
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+ggplot(phq, aes(phq_sum_1_4)) + geom_area(stat = "bin") + 
+  scale_x_continuous(breaks = brk_1_4) + labs(title = "Boxplot de PHQ 1 a 4", x="Sumas")
+
+ggplot(long, aes(Valor)) + geom_area(stat = "bin")
+
+
+nodes <- data.frame(id = dm)
+edges <- data.frame(from = dm, to = dm)
+visNetwork(dm_names, edges, width = "100%")
+
+length(gen_zeroorder)
+
+dm <- data.frame(gen_zeroorder)
+dm_names <-  data.frame(colnames(dm))
+```
+
