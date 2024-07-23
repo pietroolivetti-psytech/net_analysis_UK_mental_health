@@ -13,15 +13,8 @@ runtime: shiny
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(dplyr)
-library(igraph)
-library(igraphdata)
 library(qgraph)
-library(bootnet)
-library(corpcor)
-library(usethis)
-library(MPsychoR)
 library(shiny)
-library(rlang)
 library(DT)
 
 ```
