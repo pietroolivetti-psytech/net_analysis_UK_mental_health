@@ -1,0 +1,220 @@
+---
+title: "Untitled"
+author: "Pietro Olivetti"
+date: "2024-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#install.packages('tidyverse')
+
+library(ggplot2)
+library(plotly)
+library(dplyr)
+
+df <- read.csv('ESS11.csv')
+head(df)
+
+
+df_t <- df %>%
+  select(idno, cntry, gndr, agea, hinctnta, hlthhmp, medtrun, fltsd, cldgng, fltdpr, slprl, flteeff, fltlnl, cgtsmok, alcfreq, dosprt, ctrlife) %>%
+  mutate(cntry = recode(cntry, !!!c("AT" = "Austria", "CH" = "Switzerland", "DE" = "Germany", "FI" = "Finland", "GB" = "United Kingdom", "HR" = "Croatia", "HU" = "Hungary", "IE" = "Ireland", "LT" = "Lithuania", "NL" = "Netherlands", "NO" = "Norway", "SI" = "Slovenia", "SK" = "Slovakia"))) %>%
+  mutate(fltsd = ifelse(fltsd > 4, NA, fltsd))  %>%
+  mutate(fltdpr = ifelse(fltdpr > 4, NA, fltdpr))  %>%
+  mutate(cldgng = ifelse(cldgng > 4, NA, cldgng))  %>%
+  mutate(slprl = ifelse(slprl > 4, NA, slprl))  %>%
+  mutate(flteeff = ifelse(flteeff > 4, NA, flteeff))  %>%
+  mutate(fltlnl = ifelse(fltlnl > 4, NA, fltlnl))  %>%
+  mutate(cgtsmok = ifelse(cgtsmok > 6, NA, cgtsmok))  %>%
+  mutate(alcfreq = ifelse(alcfreq > 7, NA, alcfreq))  %>%
+  mutate(dosprt = ifelse(dosprt > 7, NA, dosprt))  %>%
+  mutate(ctrlife = ifelse(ctrlife > 10, NA, ctrlife)) %>%
+  mutate(hinctnta = ifelse(hinctnta > 10, NA, hinctnta)) %>%
+  mutate(medtrun = ifelse(medtrun > 2, NA, medtrun)) %>%
+  mutate(hlthhmp = ifelse(hlthhmp > 3, NA, hlthhmp)) %>%
+  mutate(cgtsmok = recode(cgtsmok, `6` = 1, `5` = 2, `4` = 3, `3`= 4, `2` = 5, `1` = 6)) %>% # only from 1 to 6
+  mutate(alcfreq = recode(alcfreq, `7` = 1, `6` = 2, `5` = 3, `4`= 4, `1` = 7, `2` = 6, `3` = 5)) %>%
+  mutate(hlthhmp = recode(hlthhmp, `3` = 1, `2` = 2,`1` = 3)) %>%
+  mutate(agea = ifelse(agea > 150, NA, agea)) %>%
+  mutate(gndr = as.factor(recode(gndr, `1` = "Male", `2` = "Female"))) %>%
+  mutate(hinctnta = as.factor(hinctnta))
+
+
+
+df_t <- df_t %>%
+  mutate(age_cat = case_when(
+    agea <= 20 ~ "15 to 20",
+    agea <= 25 & agea >= 21 ~"21 to 25",
+    agea <= 30 & agea >= 26 ~"26 to 30",
+    agea <= 35 & agea >= 31 ~"31 to 35",
+    agea <= 40 & agea >= 36 ~"36 to 40",
+    agea <= 45 & agea >= 41 ~"41 to 45",
+    agea <= 50 & agea >= 46 ~"46 to 50",
+    agea <= 55 & agea >= 51 ~"51 to 55",
+    agea <= 60 & agea >= 56 ~"56 to 60",
+    agea <= 65 & agea >= 61 ~"61 to 65",
+    agea <= 70 & agea >= 66 ~"66 to 70",
+    agea <= 75 & agea >= 71 ~"71 to 75",
+    agea <= 80 & agea >= 76 ~"76 to 80",
+    agea <= 85 & agea >= 81 ~"81 to 85",
+    agea <= 90 & agea >= 86 ~"85 to 90",
+  ))
+
+
+summary(df_t)
+dim(df_t)
+
+df_t
+
+df_clean <- na.omit(df_t)
+
+df_clean_dep <- df_clean %>%
+  mutate(dep_proxy = round(((fltsd + cldgng + fltdpr + slprl + flteeff + fltlnl) / 6),2)) %>%
+  mutate(dep_proxy = case_when(
+    dep_proxy <= 1.5 ~ "Normal or Very Light",
+    dep_proxy > 1.5 & dep_proxy <= 2.0 ~ "Light",
+    dep_proxy > 2.0 & dep_proxy <= 2.5 ~ "Moderate",
+    dep_proxy > 2.5 & dep_proxy <= 3.0 ~ "Strong",
+    dep_proxy > 3.0 ~ "Extremely Strong")) %>%
+  mutate(dep_proxy = factor(dep_proxy, ordered = TRUE, levels = c("Normal or Very Light", "Light", "Moderate", "Strong", "Extremely Strong")))
+
+head(df_clean_dep)
+
+summary(df_clean_dep$cgtsmok)
+
+str(df_clean_dep$dep_proxy)
+```
+
+```{r}
+#write.csv(df_clean, file = "df_clean_more_features2.csv")
+
+write.csv(df_clean_dep, file = "df_clean_more_features2.csv")
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+df2_age_gender <- df_clean %>%
+  filter(cntry == "Germany") %>%
+  group_by(gender = as.factor(gndr)) %>%
+  count(age_cat) %>%
+  arrange(age_cat)
+
+df2_age_gender
+
+
+df2_age_gender %>% plot_ly( x=~age_cat, y = ~n, color = ~gender , type = 'bar') %>%
+  layout(title = "Age Distribution by Gender in Germany", xaxis = list(title = "Age Category"), yaxis = list(title = "Frequency"), barmode = 'group') #%>% add_trace(fill = ~gender)
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r }
+df2_dem_cntry <- function(cn){df2 %>%
+  filter(cntry == cn) %>%
+  group_by(gender = as.factor(gndr)) %>%
+  count(age_cat) %>%
+  arrange(age_cat)
+
+#df2_age_gender <- df2_dem_cntry("Austria")
+
+df2_age_gender %>% plot_ly( x=~age_cat, y = ~n, color = ~gender , type = 'bar') %>%
+  layout(title = "Age Distribution by Gender in Germany", xaxis = list(title = "Age Category"), yaxis = list(title = "Frequency"), barmode = 'group') #%>% add_trace(fill = ~gender)}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r}
+df2_dem_cntry <- function(cn){df2 %>%
+  filter(cntry == cn) %>%
+  group_by(gender = as.factor(gndr)) %>%
+  count(age_cat) %>%
+  arrange(age_cat) %>% plot_ly( x=~age_cat, y = ~n, color = ~gender , type = 'bar') %>%
+  layout(title = paste("Age Distribution by Gender in", cn) , xaxis = list(title = "Age Category"), yaxis = list(title = "Frequency"), barmode = 'group')}
+
+
+
+df2_dem_cntry("Austria")
+```
+
+```{r}
+test_dep <- df_clean_dep %>%
+  filter(cntry == 'Austria') %>%
+  count(dep_proxy)
+
+test_dep
+
+
+plot_ly(test_dep, type = 'pie', labels = ~dep_proxy, values = ~n)
+
+```
+
+
+```{r}
+  test <- df2 %>%
+  filter(cntry == 'Austria') %>%
+  filter(hinctnta %in% c(1,2,3)) %>%
+  filter(hlthhmp %in% c(1,2,3)) %>%
+  filter(medtrun %in% c(1,2,3)) %>%
+  group_by(gender = gndr) %>%
+  count(age_cat, income = hinctnta, hampered = hlthhmp, healthcare = medtrun) %>%
+  arrange(age_cat)
+
+test
+```
+
+
+```{r}
+plot_ly(data= test, type = 'pie', labels = ~healthcare, values = ~n)
+```
+
+
+
+```{r}
+df2
+test_inc <- df2 %>%
+  filter(cntry == 'Austria') %>%
+  #filter(hinctnta %in% c(1,2,3, 5, 6 , 7)) %>%
+  filter(hlthhmp %in% c(1,2,3)) %>%
+  filter(medtrun %in% c(1,2)) %>%
+  filter(cgtsmok %in% c(1,2,3)) %>%
+  filter(alcfreq %in% c(1,2,3)) %>%
+  filter(dosprt %in% c(1,2,3)) %>%
+  group_by(hinctnta, dep_proxy) %>%
+  ungroup() %>%
+  count(income = hinctnta, dep_proxy) %>%
+  arrange(dep_proxy)
+  #summarise(.groups, n = sum(n())) 
+    #arrange(age_cat)
+test_inc
+  plot_ly(data = test_inc, x=~n, y = ~income, color = ~dep_proxy, type = 'bar', orientation = 'h', colors = c("#66CDAA", "#00CED1", "#4682B4", "#4169E1", "#00008B") ) %>%
+  layout(title = "Age Distribution by Gender" , xaxis = list(title = "Count"), yaxis = list(title = "Income levels"), barmode = 'stack')
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+

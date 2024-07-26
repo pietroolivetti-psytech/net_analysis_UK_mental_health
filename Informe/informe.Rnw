@@ -1,0 +1,88 @@
+\documentclass{report}
+\title{Report del dashboard}
+\date{26/07/2024}
+\author{Pietro}
+
+\usepackage{paracol}
+\usepackage{Sweave}
+\usepackage{blindtext}
+
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\begin{Schunk}
+\begin{Sinput}
+print(1+1)
+\end{Sinput}
+\begin{Soutput}
+
+\end{Soutput}
+\end{Schunk}
+
+
+<<echo=FALSE>>=
+if(!require(tinytex)){install.packages('tinytex') 
+  library(tinytex)}
+if(!require(tidyverse)){install.packages('tidyverse') 
+  library(tidyverse)}
+if(!require(plotly)){install.packages('plotly') 
+  library(plotly)}
+@
+
+<<echo=FALSE>>=
+test_inc <- df2 %>%
+  filter(cntry == 'United Kingdom') %>%
+  group_by(hinctnta, dep_proxy) %>%
+  ungroup() %>%
+  count(income = hinctnta, dep_proxy) %>%
+  arrange(dep_proxy) %>%
+  #summarise(.groups, n = sum(n())) 
+  arrange(desc(n), dep_proxy)
+test_inc
+@
+
+Los destinatarios del dashboard serán los stakeholders de una Organización No Gubernamental 
+(ONG) británica que procura identificar y atender a personas en situación de vulnerabilidad 
+socioeconómica. La exploración de estos datos busca comprender el perfil de los individuos que 
+presentan mayor riesgo de depresión.  Se trata de una audiencia que está habituada a datos 
+sociodemográficos, pero es la primera vez que buscan más informaciones relativas a la salud de 
+los individuos, de forma que podríamos considerar que tienen un nivel de conocimiento 
+moderado para interpretar el dashboard. Todos los análisis se realizarán en el entorno de la IDE 
+RStudio, conjuntamente con herramientas para la investigación reproducible como  Github, 
+Shiny y Markdown. 
+Trataremos de responder a las siguientes preguntas de la ONG: 
+\begin{itemize}
+\item ¿Hay una diferencia significativa de la prevalencia del síntoma de sentirse deprimido entre las personas que viven en vulnerabilidad económica y las que no viven en esta condición? (Utilizaremos como umbral menos de 380 libras por semana para abarcar todos los perfiles). 
+
+\includegraphics[width=1\textwidth]{dep_by_income.JPG}
+
+
+
+
+
+
+
+\item ¿Individuos que experimentan problemas de salud tienen mayor probabilidad de 
+manifestar el síntoma depresivo? 
+\item ¿Cuál es el impacto de la inaccesibilidad a los servicios de salud en el nivel de síntoma 
+depresivo? 
+\item ¿Personas en situación de vulnerabilidad económica están más propensas a tener 
+dificultad de acceso a los servicios de salud? 
+\item ¿Las variables sociodemográficas de edad y género indican prevalencia del síntoma 
+depresivo más intenso (nivel 3 y 4)?
+
+\end{itemize}
+
+\begin{paracol}{2}
+\noindent This is text in two columns using paracol.
+\switchcolumn
+This is the second column.
+\end{paracol}
+
+
+
+
+\end{document}
+
+

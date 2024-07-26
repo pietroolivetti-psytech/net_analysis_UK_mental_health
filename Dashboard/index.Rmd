@@ -1,0 +1,223 @@
+---
+title: "Dashboard ESS11 (Sociodemographics, Health Issues and Depression)"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{r}
+
+
+library(flexdashboard)
+library(tidyverse)
+library(shiny)
+library(plotly)
+library(markdown)
+library(knitr)
+
+
+```
+
+```{r}
+
+df2 <- read.csv("../Data/df_clean_more_features.csv", header = T)[2:18]
+
+```
+
+# Exploratory data analysis
+
+```{r}
+chosen_cntry_dem_inc <- reactive({req(input$countries_dem_inc)
+  df2 %>%
+  filter(cntry == input$countries_dem_inc) %>%
+  filter(hinctnta %in% input$var_dem_inc) %>%
+  filter(hlthhmp %in% input$var_dem_hamp) %>%
+  filter(medtrun %in% input$var_dem_healthcare) %>%
+  filter(cgtsmok %in% input$var_dem_smk) %>%
+  filter(alcfreq %in% input$var_dem_alc) %>%
+  filter(dep_proxy %in% input$var_dem_dep) %>%
+  group_by(gender = gndr, age_cat) %>%
+  summarise(n = sum(n())) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  arrange(age_cat)})
+
+chosen_cntry_dem_hinc <- reactive({req(input$countries_dem_inc)
+  df2 %>%
+  filter(cntry == input$countries_dem_inc) %>%
+  filter(hinctnta %in% input$var_dem_inc) %>%
+  filter(hlthhmp %in% input$var_dem_hamp) %>%
+  filter(medtrun %in% input$var_dem_healthcare) %>%
+  filter(cgtsmok %in% input$var_dem_smk) %>%
+  filter(alcfreq %in% input$var_dem_alc) %>%
+  filter(dep_proxy %in% input$var_dem_dep) %>%
+  group_by(hinctnta, dep_proxy) %>%
+  ungroup() %>%
+  count(income = hinctnta, dep_proxy) %>%
+  mutate(dep_proxy = factor(dep_proxy, ordered = TRUE, levels = c("Normal or Very Light", "Light", "Moderate", "Strong", "Extremely Strong")))
+  })
+```
+
+## Column A {data-width="650"}
+
+### By Age and Gender 
+
+```{r}
+
+renderPlotly({req(input$countries_dem_inc)
+  plot_ly(data = chosen_cntry_dem_inc(), x=~age_cat, y = ~n, color = ~gender, type = 'bar', colors = c('Male' = '#444494', 'Female' = '#6dc5b5'), hovertemplate = "Value: %{y}<extra></extra>") %>%
+  layout(title = "Age Distribution by Gender" , xaxis = list(title = "Age Category"), yaxis = list(title = "Frequency"), barmode = 'group')})
+```
+
+### By Income Level
+
+```{r}
+
+renderPlotly({req(input$countries_dem_inc)
+  plot_ly(data = chosen_cntry_dem_hinc(), x=~n, y = ~income, color = ~dep_proxy, type = 'bar', orientation = 'h', colors = c("#66CDAA", "#00CED1", "#4682B4", "#4169E1", "#00008B"), hovertemplate = "Value: %{x}<extra></extra>") %>%
+  layout(title = "Depressive symptoms intensity by Income level" , xaxis = list(title = "Count"), yaxis = list(title = "Income level", tickvals = 1:10), barmode = 'stack')})
+
+```
+
+## Column B
+
+### Variable Pie Chart
+
+```{r}
+
+chosen_cntry_dem_dep <- reactive({req(input$countries_dem_inc)
+  df2 %>%
+  filter(cntry == input$countries_dem_inc) %>%
+  filter(hinctnta %in% input$var_dem_inc) %>%
+  filter(hlthhmp %in% input$var_dem_hamp) %>%
+  filter(medtrun %in% input$var_dem_healthcare) %>%
+  filter(cgtsmok %in% input$var_dem_smk) %>%
+  filter(alcfreq %in% input$var_dem_alc) %>%
+  filter(dep_proxy %in% input$var_dem_dep) %>%
+  group_by(gender = gndr, age_cat) %>%
+  count(dep_proxy) %>%
+  mutate(dep_proxy = factor(dep_proxy, ordered = TRUE, levels = c("Normal or Very Light", "Light", "Moderate", "Strong", "Extremely Strong")))  %>%
+  arrange(dep_proxy)
+  })
+
+
+
+renderPlotly({
+  plot_ly(data= chosen_cntry_dem_dep(), type = 'pie', labels = ~dep_proxy, values = ~n) %>%
+  layout(legend = list(font = list(size = 12)), width = 600, title = paste("Sample from", input$countries_dem_inc, "given the selected features"))
+})
+
+
+```
+
+### Pie Chart General Results  
+
+```{r}
+dep_dem_gen <- reactive({req(input$countries_dem_inc)
+  df2 %>% filter(cntry == input$countries_dem_inc) %>%
+    count(dep_proxy) %>%   mutate(dep_proxy = factor(dep_proxy, ordered = TRUE, levels = c("Normal or Very Light", "Light", "Moderate", "Strong", "Extremely Strong")))})
+
+renderPlotly({req(input$countries_dem_inc)
+  plot_ly(data= dep_dem_gen(), type = 'pie', labels = ~dep_proxy, values = ~n) %>%
+  layout(legend = list(font = list(size = 12)), width = 600, title =paste("Whole sample from", input$countries_dem_inc))
+})
+
+
+```
+
+### Gauge
+
+```{r}
+renderGauge({
+req(input$countries_dem_inc)
+tot <- df2 %>% filter(cntry == input$countries_dem_inc) %>% summarise(total = n()) %>% pull(total)
+current <- sum(chosen_cntry_dem_inc()$n)
+gauge(value = sum(current / tot) * 100, min = 0, max = (tot/tot)*100, symbol = '%', label = paste('Total:',current))
+})
+```
+
+## Demographics & Health variables {.sidebar data-width="250"}
+
+### *Country Selection*
+
+```{r}
+selectInput('countries_dem_inc', 'SELECT A COUNTRY', unique(df2$cntry))
+
+```
+
+------------------------------------------------------------------------
+
+### *Level of income*
+
+```{r}
+op_inc <- sort(unique(df2$hinctnta))
+checkboxGroupInput("var_dem_inc", 'Select the income level - read the annex below', op_inc, inline = T, selected = op_inc)
+tags$a(href = "https://stessrelpubprodwe.blob.core.windows.net/ESS11_appendix_a2_e01.pdf", "ESS11 Appendix Income")
+```
+
+------------------------------------------------------------------------
+
+### *Hampered in daily activities by illness*
+
+```{r}
+checkboxGroupInput("var_dem_hamp", 'Choices:' ,choiceNames = c("No", "To some extent", "A lot") , choiceValues =  unique(df2$hlthhmp), inline = T, selected = unique(df2$hlthhmp))
+op_dem_hamp <- reactive({df2[, c(input$var_dem_hamp)]})
+```
+
+------------------------------------------------------------------------
+
+### *Unable to access health care in the last 12 months*
+
+```{r}
+checkboxGroupInput("var_dem_healthcare", 'Choices:' ,choiceNames = c("No","Yes") , choiceValues =  unique(df2$medtrun), inline = T, selected = unique(df2$medtrun))
+op_dem_healthcare <- reactive({df2[, c(input$var_dem_healthcare)]})
+```
+
+------------------------------------------------------------------------
+
+### *Smoking habits*
+
+```{r}
+smoking_status <- c("Never smoked",
+  "A few times during life",
+  "Used to but not anymore",
+  "Yes, but not every day",
+  "Daily, 9 or less",
+  "Daily, 10 or more")
+
+op_smk <- sort(unique(df2$cgtsmok))
+
+checkboxGroupInput("var_dem_smk", 'Choices:', choiceValues =  op_smk, choiceNames = smoking_status ,inline = T, selected = op_smk)
+```
+
+------------------------------------------------------------------------
+
+### *Alcohol habits*
+
+```{r}
+alc_status <- c(
+  "Never",
+  "Less than once a month",
+  "Once a month",
+  "2-3 times a month",
+  "Once a week",
+  "Several times a week",
+  "Every day"
+)
+op_alc <- sort(unique(df2$alcfreq))
+checkboxGroupInput("var_dem_alc", 'Choices:',choiceValues =  op_alc, choiceNames = alc_status ,inline = T, selected = op_alc)
+```
+
+------------------------------------------------------------------------
+
+
+### *Depression Proxy Levels*
+```{r}
+checkboxGroupInput("var_dem_dep", 'Choices:' ,   unique(df2$dep_proxy), inline = T, selected = unique(df2$dep_proxy))
+
+#op_dem_dep <- reactive({df2[, c(input$var_dem_dep)]})
+```
+
